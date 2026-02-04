@@ -1,0 +1,95 @@
+# ---------- 1. Clone dataset ----------
+!git clone https://github.com/WhySchools/VFND-vietnamese-fake-news-datasets.git
+
+import os
+import pandas as pd
+from sklearn.model_selection import train_test_split
+
+BASE_DIR = "/content/VFND-vietnamese-fake-news-datasets"
+
+all_rows = []
+
+# ---------- 2. Load data ----------
+for root, dirs, files in os.walk(BASE_DIR):
+    for file in files:
+        path = os.path.join(root, file)
+
+        try:
+            # CSV
+            if file.endswith(".csv"):
+                df = pd.read_csv(path)
+
+                text_col, label_col = None, None
+
+                for c in df.columns:
+                    if any(x in c.lower() for x in ["text", "content", "news", "body"]):
+                        text_col = c
+                    if any(x in c.lower() for x in ["label", "fake", "real", "class"]):
+                        label_col = c
+
+                if text_col and label_col:
+                    for _, r in df.iterrows():
+                        text = str(r[text_col]).strip()
+                        label = str(r[label_col]).lower()
+
+                        if label in ["fake", "0"]:
+                            y = 0
+                        elif label in ["real", "true", "1"]:
+                            y = 1
+                        else:
+                            continue
+
+                        if text:
+                            all_rows.append([text, y])
+
+            # TXT
+            elif file.endswith(".txt"):
+                y = 0 if "fake" in root.lower() else 1
+                with open(path, "r", encoding="utf-8", errors="ignore") as f:
+                    text = f.read().strip()
+                    if text:
+                        all_rows.append([text, y])
+
+        except Exception as e:
+            print("Skip:", path)
+
+# ---------- 3. Create final DataFrame ----------
+df = pd.DataFrame(all_rows, columns=["NỘI DUNG", "GIẢ(0)/THẬT(1)"])
+df.insert(0, "STT", range(1, len(df) + 1))
+
+print("Tổng số mẫu:", len(df))
+print(df.head())
+
+# ---------- 4. Stratified split (80 / 10 / 10) ----------
+train_df, temp_df = train_test_split(
+    df,
+    test_size=0.2,
+    random_state=42,
+    stratify=df["GIẢ(0)/THẬT(1)"]
+)
+
+val_df, test_df = train_test_split(
+    temp_df,
+    test_size=0.5,
+    random_state=42,
+    stratify=temp_df["GIẢ(0)/THẬT(1)"]
+)
+
+print("\nSplit size:")
+print("Train:", len(train_df))
+print("Val  :", len(val_df))
+print("Test :", len(test_df))
+
+# ---------- 5. Export files ----------
+train_df.to_csv("/content/train.csv", index=False, encoding="utf-8-sig")
+val_df.to_csv("/content/val.csv", index=False, encoding="utf-8-sig")
+test_df.to_csv("/content/test.csv", index=False, encoding="utf-8-sig")
+
+train_df.to_excel("/content/train.xlsx", index=False)
+val_df.to_excel("/content/val.xlsx", index=False)
+test_df.to_excel("/content/test.xlsx", index=False)
+
+print("\nFiles exported:")
+print("- train.csv / train.xlsx")
+print("- val.csv   / val.xlsx")
+print("- test.csv  / test.xlsx")
