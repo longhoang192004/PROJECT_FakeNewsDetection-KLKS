@@ -1,0 +1,15 @@
+# Python venv
+.venv/
+venv/
+
+# Outputs / checkpoints / logs
+outputs/
+*.pt
+*.pth
+*.ckpt
+*.log
+
+# Cache
+__pycache__/
+*.pyc
+.ipynb_checkpoints/
